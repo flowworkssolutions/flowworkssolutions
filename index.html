@@ -2205,9 +2205,7 @@ function HeroTheatre() {
     className: "hero__inner"
   }, /*#__PURE__*/React.createElement("div", {
     className: "hero__kicker reveal"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "kicker"
-  }, HERO_KICKER)), /*#__PURE__*/React.createElement("h1", {
+  }), /*#__PURE__*/React.createElement("h1", {
     className: "display display-xl hero__title reveal reveal--d1"
   }, HERO_TITLE_1, " ", /*#__PURE__*/React.createElement("span", {
     className: "teal"
@@ -2240,9 +2238,7 @@ function HeroSplit() {
     className: "hero__inner"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     className: "hero__kicker reveal"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "kicker"
-  }, HERO_KICKER)), /*#__PURE__*/React.createElement("h1", {
+  }), /*#__PURE__*/React.createElement("h1", {
     className: "display display-lg hero__title reveal reveal--d1",
     style: {
       marginTop: 28
@@ -2289,9 +2285,7 @@ function HeroFull() {
     className: "hero__inner"
   }, /*#__PURE__*/React.createElement("div", {
     className: "hero__kicker reveal"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "kicker"
-  }, HERO_KICKER)), /*#__PURE__*/React.createElement("h1", {
+  }), /*#__PURE__*/React.createElement("h1", {
     className: "display display-xl hero__title reveal reveal--d1"
   }, HERO_TITLE_1, " ", /*#__PURE__*/React.createElement("span", {
     className: "teal"
@@ -2358,9 +2352,7 @@ function HeroEditorial() {
     className: "hero__inner"
   }, /*#__PURE__*/React.createElement("div", {
     className: "hero__kicker reveal"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "kicker"
-  }, HERO_KICKER)), /*#__PURE__*/React.createElement("h1", {
+  }), /*#__PURE__*/React.createElement("h1", {
     className: "display display-xl hero__title reveal reveal--d1"
   }, HERO_TITLE_1, " ", /*#__PURE__*/React.createElement("span", {
     className: "teal"
@@ -2403,6 +2395,48 @@ const DEMO_FORM = {
   web3formsKey: ''
 };
 const MAIL_RE = /^[^@\s]+@[^@\s.]+\.[^@\s]+$/;
+
+/* Posts the request to FormSubmit through a hidden iframe. A plain form
+   POST (not fetch) is what FormSubmit expects: it needs no CORS headers,
+   and it is the submission that triggers the one-off activation e-mail
+   for the target mailbox. The iframe keeps the visitor on the page. */
+function sendViaFormSubmit(fields) {
+  return new Promise(resolve => {
+    const frameName = 'fs-' + Date.now();
+    const frame = document.createElement('iframe');
+    frame.name = frameName;
+    frame.style.display = 'none';
+    document.body.appendChild(frame);
+    const form = document.createElement('form');
+    form.action = 'https://formsubmit.co/' + DEMO_FORM.to;
+    form.method = 'POST';
+    form.target = frameName;
+    form.style.display = 'none';
+    Object.keys(fields).forEach(key => {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = key;
+      input.value = fields[key] == null ? '' : String(fields[key]);
+      form.appendChild(input);
+    });
+    document.body.appendChild(form);
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      setTimeout(() => {
+        form.remove();
+        frame.remove();
+      }, 0);
+      resolve();
+    };
+    frame.addEventListener('load', finish, {
+      once: true
+    });
+    form.submit();
+    setTimeout(finish, 6000);
+  });
+}
 function DemoSection() {
   const [status, setStatus] = React.useState('idle'); // idle | sending | ok | error
   const submitted = status === 'ok';
@@ -2425,37 +2459,38 @@ function DemoSection() {
     }
     setStatus('sending');
     try {
-      const useWeb3 = !!DEMO_FORM.web3formsKey;
-      const url = useWeb3 ? 'https://api.web3forms.com/submit' : 'https://formsubmit.co/ajax/' + encodeURIComponent(DEMO_FORM.to);
-      const payload = useWeb3 ? {
-        access_key: DEMO_FORM.web3formsKey,
-        subject: DEMO_FORM.subject,
-        from_name: 'FlowWorks website',
-        replyto: data.email,
-        name: data.name,
-        company: data.company,
-        email: data.email,
-        message: data.message
-      } : {
-        _subject: DEMO_FORM.subject,
-        _template: 'table',
-        _captcha: 'false',
-        Name: data.name,
-        Company: data.company,
-        email: data.email,
-        Message: data.message
-      };
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok || json.success === false || json.success === 'false') {
-        throw new Error(json.message || 'HTTP ' + res.status);
+      if (DEMO_FORM.web3formsKey) {
+        const res = await fetch('https://api.web3forms.com/submit', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json'
+          },
+          body: JSON.stringify({
+            access_key: DEMO_FORM.web3formsKey,
+            subject: DEMO_FORM.subject,
+            from_name: 'FlowWorks website',
+            replyto: data.email,
+            name: data.name,
+            company: data.company,
+            email: data.email,
+            message: data.message
+          })
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || String(json.success) === 'false') {
+          throw new Error(json.message || 'HTTP ' + res.status);
+        }
+      } else {
+        await sendViaFormSubmit({
+          _subject: DEMO_FORM.subject,
+          _template: 'table',
+          _captcha: 'false',
+          Name: data.name,
+          Company: data.company,
+          email: data.email,
+          Message: data.message
+        });
       }
       setStatus('ok');
       form.reset();
@@ -2664,9 +2699,7 @@ function PlatformSection() {
   }, FEATURES.map((f, i) => /*#__PURE__*/React.createElement("article", {
     key: f.title,
     className: `feature feature--dark reveal reveal--d${i % 3 + 1}`
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "feature__tag"
-  }, f.tag), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", {
     className: "feature__icon"
   }, f.icon), /*#__PURE__*/React.createElement("h3", {
     className: "feature__title"
@@ -2780,16 +2813,6 @@ function Footer() {
     target: "_blank",
     rel: "noopener"
   }, "Watch trailer \u2197")))), /*#__PURE__*/React.createElement("div", {
-    className: "footer__col"
-  }, /*#__PURE__*/React.createElement("h4", null, "Company"), /*#__PURE__*/React.createElement("ul", null, /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("a", {
-    href: "#about"
-  }, "About")), /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("a", {
-    href: "mailto:info@flowworkssolutions.com"
-  }, "info@flowworkssolutions.com")), /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("a", {
-    href: "https://www.linkedin.com/flowworkssolutions",
-    target: "_blank",
-    rel: "noopener"
-  }, "LinkedIn \u2197")))), /*#__PURE__*/React.createElement("div", {
     className: "footer__col"
   }, /*#__PURE__*/React.createElement("h4", null, "Get in touch"), /*#__PURE__*/React.createElement("ul", null, /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("a", {
     className: "btn btn--primary",
