@@ -3,29 +3,46 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>FormSubmit test — FlowWorks</title>
+<title>Web3Forms test — FlowWorks</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap">
 </head>
 <body style="margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0E2E2C;font-family:Inter,system-ui,sans-serif;color:#0E2E2C">
-  <form action="https://formsubmit.co/info@flowworkssolutions.com" method="POST"
-        style="background:#fff;border-radius:18px;padding:36px;max-width:460px;width:calc(100% - 40px);box-shadow:0 20px 60px rgba(0,0,0,.35)">
-    <h1 style="margin:0 0 10px;font-size:20px">FormSubmit test</h1>
+  <div style="background:#fff;border-radius:18px;padding:36px;max-width:460px;width:calc(100% - 40px);box-shadow:0 20px 60px rgba(0,0,0,.35)">
+    <h1 style="margin:0 0 10px;font-size:20px">Web3Forms test</h1>
     <p style="margin:0 0 22px;font-size:14px;line-height:1.55;color:#456">
-      Deze pagina stuurt een testbericht naar <strong>info@flowworkssolutions.com</strong> zonder
-      verborgen frame, zodat je het antwoord van FormSubmit gewoon op je scherm ziet.
-      Verwacht bij een eerste verzending een pagina met de tekst dat je je e-mailadres moet bevestigen.
+      Stuurt een testbericht naar <strong>info@flowworkssolutions.com</strong> en toont
+      hieronder letterlijk het antwoord van Web3Forms.
     </p>
-    <input type="hidden" name="_subject" value="FormSubmit test — FlowWorks">
-    <input type="hidden" name="_template" value="table">
-    <input type="hidden" name="_captcha" value="false">
-    <input type="hidden" name="Name" value="Test">
-    <input type="hidden" name="Company" value="FlowWorks">
-    <input type="hidden" name="email" value="info@flowworkssolutions.com">
-    <input type="hidden" name="Message" value="Testbericht om de activatiemail te forceren.">
-    <button type="submit"
+    <button id="go" type="button"
       style="width:100%;padding:14px 20px;border:0;border-radius:999px;background:#15B5A8;color:#fff;font:600 15px Inter,sans-serif;cursor:pointer">
       Verstuur testbericht
     </button>
-  </form>
+    <pre id="out" style="margin:20px 0 0;padding:14px;border-radius:12px;background:#f2f4f3;font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-word;color:#234">nog niets verstuurd</pre>
+  </div>
+<script>
+document.getElementById('go').addEventListener('click', async () => {
+  const out = document.getElementById('out');
+  out.textContent = 'bezig met versturen…';
+  try {
+    const res = await fetch('https://api.web3forms.com/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        access_key: 'd75da472-4eb6-46ab-88c2-9a3c61971b94',
+        subject: 'Web3Forms test — FlowWorks',
+        from_name: 'FlowWorks website',
+        name: 'Test',
+        company: 'FlowWorks',
+        email: 'info@flowworkssolutions.com',
+        message: 'Testbericht om de bezorging te controleren.'
+      })
+    });
+    const text = await res.text();
+    out.textContent = 'HTTP ' + res.status + '\n\n' + text;
+  } catch (err) {
+    out.textContent = 'FOUT: ' + err.message;
+  }
+});
+</script>
 </body>
 </html>
